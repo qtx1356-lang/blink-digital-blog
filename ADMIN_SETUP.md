@@ -1,58 +1,67 @@
-# Blink Admin setup
+# Blink Admin — multi-user setup
 
-The public blog remains a Render Static Site. The admin dashboard runs as a separate Render Web Service so GitHub OAuth secrets and access tokens stay on the server.
+The public blog remains a Render Static Site. The private multi-user dashboard runs as a separate Render Node Web Service. Contributors sign in with their own GitHub accounts; they do **not** need access to the blog repository.
 
-## 1. Create the admin Web Service in Render
+## 1. Create the admin Web Service
 
-1. In Render, choose **New + → Web Service**.
-2. Connect the repository `qtx1356-lang/blink-digital-blog`, branch `main`.
-3. Name it `blink-digital-blog-admin` (or another available name).
-4. Runtime: **Node**.
-5. Build command: `npm install`.
-6. Start command: `npm start`.
-7. Choose the Free plan if available and create the service.
-8. Copy its public URL, for example `https://blink-digital-blog-admin.onrender.com`.
+In Render choose **New + → Web Service**, connect `qtx1356-lang/blink-digital-blog`, branch `main`, and set:
 
-The existing Static Site should remain unchanged. The admin service writes to GitHub; the existing Static Site redeploys from that commit.
+- Runtime: Node
+- Build command: `npm install`
+- Start command: `npm start`
+- Plan: choose a plan suitable for your use
 
-## 2. Create a GitHub App
+Keep the existing public Static Site unchanged. The admin service commits approved published articles to the repository, which triggers the public site deployment.
 
-Open https://github.com/settings/apps/new and create an app:
+## 2. Configure a GitHub App
 
-- GitHub App name: `Blink Blog Admin`
+Create an app at https://github.com/settings/apps/new:
+
+- Name: `Blink Blog Admin`
 - Homepage URL: `https://blinkdigitalone.com/`
-- Callback URL: the new Render Web Service URL followed by `/auth/callback`
-- Repository permissions → Contents: **Read and write**
-- Leave all other repository and account permissions at **No access**
-- Create the app, then generate/copy its Client ID and Client Secret.
+- Callback URL: `https://YOUR-ADMIN-SERVICE.onrender.com/auth/callback`
+- Account permissions: no access
+- Repository permissions: **Contents — Read and write**
+- Subscribe to no webhooks unless needed later
 
-Install the app on the repository owner's account and select **Only select repositories → blink-digital-blog**. Do not install it on every repository.
+Create the app, note its **App ID** and **Client ID**, generate a **Client Secret**, and generate/download a **Private key**. Install the app on the repository owner's account and select only `blink-digital-blog`. From the installation page, note the numeric **Installation ID** (the number in the installation URL).
 
-## 3. Add Render environment variables
+## 3. Configure Render environment variables
 
-In the new admin Web Service, open **Environment** and add:
+In the admin Web Service → **Environment**, add:
 
 | Key | Value |
 | --- | --- |
-| `GITHUB_APP_CLIENT_ID` | Client ID from the GitHub App |
-| `GITHUB_APP_CLIENT_SECRET` | Client Secret from the GitHub App |
-| `PUBLIC_BASE_URL` | Exact public URL of the admin Web Service, without a trailing slash |
-| `ADMIN_ALLOWED_USER` | `qtx1356-lang` |
+| `GITHUB_APP_ID` | GitHub App numeric App ID |
+| `GITHUB_APP_CLIENT_ID` | GitHub App Client ID |
+| `GITHUB_APP_CLIENT_SECRET` | GitHub App Client Secret |
+| `GITHUB_APP_PRIVATE_KEY` | Entire downloaded PEM private key, including BEGIN/END lines |
+| `GITHUB_APP_INSTALLATION_ID` | Installation ID for the blog repository |
+| `PUBLIC_BASE_URL` | Exact admin Render URL, no trailing slash |
+| `ADMIN_ALLOWED_USER` | `qtx1356-lang` (primary admin bootstrap account) |
+| `ALLOW_PUBLIC_REGISTRATION` | `true` |
 | `GITHUB_OWNER` | `qtx1356-lang` |
 | `GITHUB_REPO` | `blink-digital-blog` |
 | `GITHUB_BRANCH` | `main` |
 
-Save changes and wait for the service to deploy.
+For the private key, Render accepts newline characters. If its value is pasted as one line with literal `\n` separators, the server converts them to newlines. Never put the private key or client secret in `admin.html`, GitHub source files, or a message.
 
-## 4. Open the dashboard
+Save and redeploy. Check `https://YOUR-ADMIN-SERVICE.onrender.com/healthz` returns `{"ok":true}`.
 
-Visit the admin Web Service URL (for example, `https://blink-digital-blog-admin.onrender.com`) and choose **Continue with GitHub**. Sign in as `qtx1356-lang`.
+## 4. First admin login and account access
 
-The dashboard manages `assets/articles.json`. Publishing commits the changes to GitHub, which triggers a deployment of the existing public Render Static Site.
+Open the admin Render URL and sign in with GitHub as `qtx1356-lang`. The server automatically creates this account as the primary Admin.
 
-## Security notes
+**Open registration:** anyone can choose GitHub sign-in. Their first sign-in creates a Pending Author request. An admin approves it in **User access**.
 
-- Never put the GitHub Client Secret, private key, or access token in `admin.html` or any public repository file.
-- The server keeps the OAuth access token in server memory and sends it to GitHub only from the server.
-- Sessions expire after eight hours and are cleared when the server restarts.
-- The admin service checks the GitHub username against `ADMIN_ALLOWED_USER`.
+**Invitations:** an admin enters a GitHub username in **User access → Invite author**. That account becomes an active Author when they sign in.
+
+Admins can approve, disable, enable, and change roles. Authors can create, edit, feature, and delete only their own articles. Admins can manage every article. Only active users can access the dashboard.
+
+## 5. Data and security
+
+- User records and invitations are stored in `assets/admin-users.json` in the private-to-the-workflow repository; published articles remain in `assets/articles.json`.
+- The GitHub App installation token is created server-side and used for repository writes. Contributors' personal GitHub accounts are used only to verify identity; contributors do not receive repository access.
+- Session cookies are HttpOnly, Secure and SameSite=Lax; sessions expire after eight hours and are cleared if the service restarts.
+- Keep the GitHub App private key and Client Secret in Render environment variables only.
+- Public registration can be switched off by setting `ALLOW_PUBLIC_REGISTRATION=false`; existing invitations still work.
