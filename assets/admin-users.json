@@ -6,6 +6,13 @@
       "role": "admin",
       "status": "active",
       "createdAt": "2026-11-10T12:14:31.849Z"
+    },
+    {
+      "login": "qtx1356@gmail.com",
+      "name": "qtx1356@gmail.com",
+      "role": "admin",
+      "status": "active",
+      "createdAt": "2026-11-10T12:40:02.465Z"
     }
   ],
   "invites": []
