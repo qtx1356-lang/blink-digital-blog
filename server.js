@@ -140,7 +140,7 @@ async function route(req,res) {
   if(req.method==='POST'&&url.pathname==='/api/users/invite'){
     if(!isAdmin(session))return send(res,403,{error:'Only admins can invite authors.'});
     const body=await readBody(req),login=String(body.login||'').trim().replace(/^@/,'').toLowerCase();
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(login))return send(res,400,{error:'Enter a valid Google email address.'});
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login))return send(res,400,{error:'Enter a valid Google email address.'});
     const store=await usersStore();
     if(store.value.users.some(u=>u.login.toLowerCase()===login&&u.status!=='disabled'))return send(res,409,{error:'This user already has an account.'});
     if(!store.value.invites.some(v=>v.login.toLowerCase()===login))store.value.invites.push({login,invitedBy:session.user.login,createdAt:new Date().toISOString()});
