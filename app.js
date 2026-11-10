@@ -99,6 +99,23 @@
     location.href = "mailto:info@yourdomain.com?subject=" + subject + "&body=" + body;
   });
 
+
+  // Reveal hero and section content as it enters the viewport.
+  const revealItems = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08 });
+    revealItems.forEach(item => revealObserver.observe(item));
+  } else {
+    revealItems.forEach(item => item.classList.add("visible"));
+  }
+
   const year = $("#year");
   if (year) year.textContent = new Date().getFullYear();
   fetch("assets/articles.json")
