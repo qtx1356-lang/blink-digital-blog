@@ -1,0 +1,80 @@
+[
+  {
+    "id": "seo-basics",
+    "category": "SEO",
+    "date": "November 2026",
+    "readTime": "5 min read",
+    "title": "SEO in 2026: Build visibility that lasts",
+    "excerpt": "A practical starting point for helping the right customers discover your business through search.",
+    "content": [
+      "Search engine optimisation is the process of improving your website so search engines can understand it and people can find useful answers. Sustainable SEO starts with understanding what your audience is searching for.",
+      "Create helpful pages around real customer questions. Use clear page titles, descriptive headings, fast-loading mobile-friendly layouts and meaningful internal links. Avoid repeating keywords unnaturally.",
+      "Measure organic clicks, search impressions, useful enquiries and conversions. SEO takes consistency; focus on improving the experience rather than chasing shortcuts."
+    ]
+  },
+  {
+    "id": "google-ads",
+    "category": "Google Ads",
+    "date": "November 2026",
+    "readTime": "6 min read",
+    "title": "Google Ads: Turn search intent into customers",
+    "excerpt": "Structure campaigns around what people need, then make every click accountable.",
+    "content": [
+      "Google Ads can connect your business with people actively looking for a product or service. Begin with a clear campaign goal: calls, leads, purchases or store visits.",
+      "Group closely related keywords, write specific ad copy and send visitors to a landing page that matches the promise in the ad. Add negative keywords to reduce irrelevant clicks.",
+      "Track conversions before increasing budgets. Review search terms, cost per lead and lead quality regularly so optimisation is based on business outcomes."
+    ]
+  },
+  {
+    "id": "meta-ads",
+    "category": "Meta Ads",
+    "date": "November 2026",
+    "readTime": "5 min read",
+    "title": "Meta Ads creative that earns attention",
+    "excerpt": "Use strong hooks, relevant visuals and a clear offer to turn scrolling into meaningful action.",
+    "content": [
+      "Meta advertising across Facebook and Instagram is highly visual. The first seconds of a video or the first frame of an image should make the value clear to the intended audience.",
+      "Test multiple creative concepts, formats and opening hooks. Keep the message focused, show the product or service clearly and include one direct call to action.",
+      "Evaluate more than likes. Monitor landing-page views, qualified leads, purchases and cost per result. Refresh creative when performance starts to decline."
+    ]
+  },
+  {
+    "id": "ai-automation",
+    "category": "AI Automation",
+    "date": "November 2026",
+    "readTime": "4 min read",
+    "title": "AI automation: Make everyday marketing more efficient",
+    "excerpt": "Find repeatable tasks where automation can save time without losing the human touch.",
+    "content": [
+      "AI and automation can help teams handle repetitive work such as sorting enquiries, drafting first versions of content and organising campaign reports.",
+      "Start with one well-defined workflow. Document the current process, decide what a good result looks like and keep a person responsible for reviewing important outputs.",
+      "Protect customer information, check facts and measure the time saved. Automation works best when it supports thoughtful people rather than replacing judgement."
+    ]
+  },
+  {
+    "id": "web-design",
+    "category": "Web Design",
+    "date": "November 2026",
+    "readTime": "5 min read",
+    "title": "A website that turns visits into enquiries",
+    "excerpt": "Make your website easier to understand, navigate and trust on every screen size.",
+    "content": [
+      "A business website should quickly answer three questions: what you offer, who you help and what visitors should do next. Put the most important information where people can find it easily.",
+      "Design for mobile first. Use readable type, clear navigation, compressed images, accessible colour contrast and obvious contact options. Every important page should have a useful next step.",
+      "Check forms, phone links and buttons on real devices. Review analytics and ask customers where they got stuck, then improve the pages based on evidence."
+    ]
+  },
+  {
+    "id": "social-media",
+    "category": "Social Media",
+    "date": "November 2026",
+    "readTime": "4 min read",
+    "title": "A social media plan you can actually maintain",
+    "excerpt": "Build a repeatable content rhythm around useful ideas, consistency and conversations.",
+    "content": [
+      "A practical social media strategy begins with your audience and business goals. Choose the platforms where your customers already spend time instead of trying to be everywhere.",
+      "Create a few repeatable content themes: education, product or service demonstrations, customer stories and behind-the-scenes updates. Plan a realistic publishing schedule you can maintain.",
+      "Respond to comments and messages, learn from saves and shares, and review which posts lead to meaningful conversations or enquiries."
+    ]
+  }
+]
