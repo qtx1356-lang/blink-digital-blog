@@ -14,22 +14,16 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="brand"><div class="brand-mark">✳</div><div>BLINK <small>DIGITAL SOLUTION · ADMIN</small></div></div><div class="top-right"><span class="status" id="connection"><i class="dot"></i> Not connected</span><a class="site-link" href="https://blinkdigitalone.com/" target="_blank" rel="noopener">View live website ↗</a></div></header>
+<header class="top"><div class="brand"><div class="brand-mark">✳</div><div>BLINK <small>DIGITAL SOLUTION · ADMIN</small></div></div><div class="top-right"><span class="status" id="connection"><i class="dot"></i> Not connected</span><button class="icon-btn hidden" id="logoutBtn" type="button">Sign out</button><a class="site-link" href="https://blinkdigitalone.com/" target="_blank" rel="noopener">View live website ↗</a></div></header>
 <section class="login" id="loginView">
-  <div class="eyebrow">PRIVATE PUBLISHING WORKSPACE</div><h1>Connect your GitHub account</h1>
-  <p>Sign in with the GitHub account that owns the Blink blog repository. Your access token stays in this browser tab and is not saved to local storage.</p>
-  <div class="steps"><strong style="font-size:11px;color:#1c3553">One-time GitHub App setup</strong><ol>
-    <li>Open <a href="https://github.com/settings/apps/new" target="_blank" rel="noopener">GitHub → Settings → Developer settings → GitHub Apps → New GitHub App</a>.</li>
-    <li>Name it <b>Blink Blog Admin</b>. Set Homepage URL to <b>https://blink-digitalone.com/</b>.</li>
-    <li>Under Repository permissions, set <b>Contents</b> to <b>Read and write</b>. Leave other permissions at No access.</li>
-    <li>Under “Identifying and authorizing users”, enable <b>Device flow</b>, then create the app.</li>
-    <li>Install the app on your account and select only <b>blink-digital-blog</b>.</li>
-    <li>Copy the app's <b>Client ID</b> below. Do not share a client secret or private key.</li>
-  </ol></div>
-  <div class="field"><label for="clientId">GITHUB APP CLIENT ID</label><input id="clientId" placeholder="Iv1.xxxxxxxxxxxxxxxx" autocomplete="off"><div class="hint">Client ID is public app configuration, not a password.</div></div>
-  <button class="btn primary" id="connectBtn" type="button">Continue with GitHub <span>↗</span></button>
+  <div class="eyebrow">PRIVATE PUBLISHING WORKSPACE</div>
+  <h1>Welcome to Blink Admin</h1>
+  <p>Sign in with the authorized GitHub account to manage articles. Publishing writes directly to your blog repository; Render then updates the live website.</p>
+  <div class="steps"><strong style="font-size:11px;color:#1c3553">Secure sign-in</strong>
+    <ol><li>Only the configured GitHub account can access this dashboard.</li><li>Your GitHub App must be installed on the <b>blink-digital-blog</b> repository with Contents read/write permission.</li><li>Your access token stays on the server and is never stored in this browser.</li></ol>
+  </div>
+  <a class="btn primary" href="/auth/github">Continue with GitHub <span>↗</span></a>
   <div id="loginMessage" aria-live="polite"></div>
-  <div id="devicePanel" class="hidden"><div class="notice info">Open GitHub's device page, enter this code, and approve Blink Blog Admin. Return to this tab after approval.</div><div class="device-code" id="userCode"></div><a class="btn" id="verifyLink" href="https://github.com/login/device" target="_blank" rel="noopener">Open GitHub verification page ↗</a><p id="pollStatus">Waiting for approval…</p></div>
 </section>
 <div class="layout hidden" id="dashboard">
   <aside class="sidebar"><div class="side-label">WORKSPACE</div><a class="side-link active" href="#overview"><span class="side-icon">▦</span><span>Overview</span></a><a class="side-link" href="#articles"><span class="side-icon">▤</span><span>All articles</span></a><a class="side-link" href="#editor"><span class="side-icon">＋</span><span>Write article</span></a><div class="side-note">Changes are saved to GitHub. Render will automatically redeploy your public blog.</div></aside>
@@ -56,50 +50,11 @@
 <div class="footer-note" id="footerNote">Blink Digital Solution · Private admin workspace</div>
 <script>
 (() => {
-const OWNER='qtx1356-lang', REPO='blink-digital-blog', FILE='assets/articles.json', BRANCH='main';
 const $=id=>document.getElementById(id);
-let token='',repoId='',articles=[],deviceTimer=null,deviceCode='';
-const apiBase='https://api.github.com';
+let articles=[];
 function message(target,text,type='info'){const el=$(target);el.className='notice '+type;el.textContent=text;}
-function b64ToUtf8(value){const bytes=Uint8Array.from(atob(value.replace(/\s/g,'')),c=>c.charCodeAt(0));return new TextDecoder().decode(bytes);}
-function utf8ToB64(value){const bytes=new TextEncoder().encode(value);let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));return btoa(binary);}
-async function api(url,options={}){const response=await fetch(url,{...options,headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(token?{Authorization:'Bearer '+token}:{}),...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||('GitHub API error '+response.status));return data;}
-function setConnected(user){$('loginView').classList.add('hidden');$('dashboard').classList.remove('hidden');$('connection').innerHTML='<i class="dot on"></i> Connected as '+user;}
-async function connect(){
- const clientId=$('clientId').value.trim();if(!clientId){message('loginMessage','Enter your GitHub App Client ID first.','error');return;}
- localStorage.setItem('blinkAdminClientId',clientId);
- $('connectBtn').disabled=true;$('connectBtn').textContent='Connecting…';
- try{
-   const repo=await fetch(apiBase+'/repos/'+OWNER+'/'+REPO).then(r=>{if(!r.ok)throw new Error('Could not find the public blog repository.');return r.json();});
-   repoId=String(repo.id);
-   const form=new URLSearchParams({client_id:clientId});
-   const response=await fetch('https://github.com/login/device/code',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},body:form});
-   const data=await response.json();if(!response.ok||data.error)throw new Error(data.error_description||data.error||'Could not start GitHub sign-in. Check that Device Flow is enabled.');
-   deviceCode=data.device_code;$('userCode').textContent=data.user_code;$('verifyLink').href=data.verification_uri||'https://github.com/login/device';$('devicePanel').classList.remove('hidden');$('pollStatus').textContent='Waiting for GitHub approval…';message('loginMessage','Device authorization started.','info');
-   let interval=Math.max(5,Number(data.interval)||5);const expires=Date.now()+(Number(data.expires_in)||900)*1000;
-   const poll=async()=>{if(Date.now()>expires){$('pollStatus').textContent='Code expired. Start again.';return;}
-     try{const body=new URLSearchParams({client_id:clientId,device_code:deviceCode,grant_type:'urn:ietf:params:oauth:grant-type:device_code',repository_id:repoId});
-       const res=await fetch('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},body});
-       const result=await res.json();
-       if(result.access_token){token=result.access_token;clearTimeout(deviceTimer);await finishLogin();return;}
-       if(result.error==='authorization_pending'){$('pollStatus').textContent='Waiting for approval… Please finish the GitHub step.';}
-       else if(result.error==='slow_down'){interval+=5;$('pollStatus').textContent='Please wait…';}
-       else if(result.error==='expired_token'||result.error==='access_denied'||result.error==='device_flow_disabled'){throw new Error(result.error_description||result.error);}
-       else if(result.error){throw new Error(result.error_description||result.error);}
-       deviceTimer=setTimeout(poll,interval*1000);
-     }catch(e){$('connectBtn').disabled=false;$('connectBtn').textContent='Try GitHub sign-in again';message('loginMessage',e.message,'error');}
-   };deviceTimer=setTimeout(poll,interval*1000);
- }catch(e){message('loginMessage',e.message,'error');$('connectBtn').disabled=false;$('connectBtn').textContent='Try GitHub sign-in again';}
-}
-async function finishLogin(){
- try{const user=await api(apiBase+'/user');if(user.login.toLowerCase()!==OWNER.toLowerCase()){token='';throw new Error('This GitHub account is not the repository owner (@'+OWNER+'). Sign in with the owner account.');}
-   await loadArticles();setConnected(user.login);
- }catch(e){token='';$('connectBtn').disabled=false;$('connectBtn').textContent='Try GitHub sign-in again';message('loginMessage',e.message,'error');}
-}
-async function loadArticles(){
- const data=await api(apiBase+'/repos/'+OWNER+'/'+REPO+'/contents/'+FILE+'?ref='+BRANCH);
- $('articleForm').dataset.sha=data.sha;articles=JSON.parse(b64ToUtf8(data.content));renderArticles();
-}
+async function api(url,options={}){const response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})},credentials:'same-origin'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||('Request failed ('+response.status+')'));return data;}
+function setConnected(user){$('loginView').classList.add('hidden');$('dashboard').classList.remove('hidden');$('connection').innerHTML='<i class="dot on"></i> Connected as '+user;$('logoutBtn').classList.remove('hidden');}
 function renderArticles(){
  const term=$('articleSearch').value.trim().toLowerCase();
  const rows=articles.map((a,i)=>({...a,_i:i})).filter(a=>(a.title+' '+a.category+' '+a.excerpt).toLowerCase().includes(term));
@@ -107,12 +62,11 @@ function renderArticles(){
  $('noArticles').classList.toggle('hidden',rows.length>0);$('totalCount').textContent=articles.length;$('categoryCount').textContent=new Set(articles.map(a=>a.category)).size;$('featuredCount').textContent=articles[0]?articles[0].title.slice(0,18)+(articles[0].title.length>18?'…':''):'—';
 }
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function loadArticles(){const data=await api('/api/articles');articles=data.articles||[];renderArticles();}
 async function saveAll(successText='Article published!'){
  const btn=$('publishBtn');btn.disabled=true;btn.textContent='Publishing…';
- try{const sha=$('articleForm').dataset.sha;const body={message:'Update blog articles from Blink Admin',content:utf8ToB64(JSON.stringify(articles,null,2)),branch:BRANCH};if(sha)body.sha=sha;
- const result=await api(apiBase+'/repos/'+OWNER+'/'+REPO+'/contents/'+FILE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
- $('articleForm').dataset.sha=result.content.sha;renderArticles();message('editorMessage',successText+' Render will deploy the update automatically.','success');return true;
- }catch(e){message('editorMessage','Could not publish: '+e.message,'error');return false;}
+ try{await api('/api/articles',{method:'PUT',body:JSON.stringify({articles})});renderArticles();message('editorMessage',successText+' Render will deploy the update automatically.','success');return true;}
+ catch(e){message('editorMessage','Could not publish: '+e.message,'error');return false;}
  finally{btn.disabled=false;btn.textContent='Publish article ↗';}
 }
 function showEditor(){ $('editor').classList.remove('hidden');$('articles').classList.add('hidden');$('editor').scrollIntoView({behavior:'smooth',block:'start'});}
@@ -120,26 +74,27 @@ function hideEditor(){ $('editor').classList.add('hidden');$('articles').classLi
 function clearForm(){ $('articleForm').reset();$('articleId').value='';$('editorHeading').textContent='Write a new article';$('publishBtn').textContent='Publish article ↗';$('previewBox').classList.add('hidden');$('editorMessage').textContent='';}
 function editArticle(index){const a=articles[index];if(!a)return;showEditor();$('articleId').value=a.id;$('editorHeading').textContent='Edit article';$('title').value=a.title||'';$('category').value=a.category||'SEO';$('readTime').value=a.readTime||'5 min read';$('excerpt').value=a.excerpt||'';$('content').value=(a.content||[]).join('\n\n');$('seoTitle').value=a.seoTitle||'';$('keywords').value=a.keywords||'';$('metaDescription').value=a.metaDescription||'';$('makeFeatured').checked=index===0;$('publishBtn').textContent='Save changes ↗';}
 function slugify(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,65)||'new-article';}
-$('connectBtn').addEventListener('click',connect);
-$('clientId').value=localStorage.getItem('blinkAdminClientId')||'';
+async function boot(){try{const state=await api('/api/session');if(!state.authenticated)return;await loadArticles();setConnected(state.user);}catch(e){message('loginMessage',e.message,'error');}}
 $('newBtn').addEventListener('click',()=>{clearForm();showEditor();});
 $('cancelBtn').addEventListener('click',hideEditor);$('resetBtn').addEventListener('click',clearForm);
 $('articleSearch').addEventListener('input',renderArticles);
+$('logoutBtn').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST',body:'{}'});}finally{location.href='/';}});
 $('articleRows').addEventListener('click',async e=>{
  const edit=e.target.closest('[data-edit]'),feature=e.target.closest('[data-feature]'),del=e.target.closest('[data-delete]');
  if(edit){editArticle(Number(edit.dataset.edit));return;}
- if(feature){const i=Number(feature.dataset.feature);const [item]=articles.splice(i,1);articles.unshift(item);if(await saveAll('Featured article updated!')){}return;}
- if(del){const i=Number(del.dataset.delete);if(!confirm('Delete “'+articles[i].title+'” from the live blog?'))return;articles.splice(i,1);await saveAll('Article deleted.');}
+ if(feature){const i=Number(feature.dataset.feature);const [item]=articles.splice(i,1);articles.unshift(item);await saveAll('Featured article updated!');return;}
+ if(del){const i=Number(del.dataset.delete);if(!confirm('Delete “'+articles[i].title+'” from the live blog?'))return;const removed=articles.splice(i,1);if(!await saveAll('Article deleted.'))articles.splice(i,0,...removed);}
 });
 $('articleForm').addEventListener('submit',async e=>{
  e.preventDefault();const title=$('title').value.trim(),content=$('content').value.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);if(!content.length){message('editorMessage','Please add the article content.','error');return;}
  const existingId=$('articleId').value;const idx=articles.findIndex(a=>a.id===existingId);
  const article={id:existingId||slugify(title),category:$('category').value,date:new Date().toLocaleString('en-US',{month:'long',year:'numeric'}),readTime:$('readTime').value,title,excerpt:$('excerpt').value.trim(),content,seoTitle:$('seoTitle').value.trim(),keywords:$('keywords').value.trim(),metaDescription:$('metaDescription').value.trim()};
- if(idx>=0)articles[idx]=article;else articles.unshift(article);
+ const previous=idx>=0?articles[idx]:null;if(idx>=0)articles[idx]=article;else articles.unshift(article);
  if($('makeFeatured').checked&&idx>0){const [item]=articles.splice(idx,1);articles.unshift(item);}
- const ok=await saveAll(idx>=0?'Article updated!':'Article published!');if(ok){clearForm();hideEditor();}
+ const ok=await saveAll(idx>=0?'Article updated!':'Article published!');if(ok){clearForm();hideEditor();}else if(idx>=0)articles[idx]=previous;
 });
 $('previewBtn').addEventListener('click',()=>{$('previewTitle').textContent=$('title').value||'Your article title';$('previewExcerpt').textContent=$('excerpt').value;$('previewContent').innerHTML=$('content').value.split(/\n\s*\n/).filter(Boolean).map(p=>'<p>'+esc(p)+'</p>').join('');$('previewBox').classList.remove('hidden');$('previewBox').scrollIntoView({behavior:'smooth',block:'nearest'});});
+boot();
 })();
 </script>
 </body></html>
