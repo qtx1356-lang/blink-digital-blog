@@ -10,10 +10,10 @@ const BRANCH = process.env.GITHUB_BRANCH || 'main';
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
 const APP_ID = process.env.GITHUB_APP_ID || '';
 const INSTALLATION_ID = process.env.GITHUB_APP_INSTALLATION_ID || '';
-const CLIENT_ID = process.env.GITHUB_APP_CLIENT_ID || '';
-const CLIENT_SECRET = process.env.GITHUB_APP_CLIENT_SECRET || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const PRIVATE_KEY = (process.env.GITHUB_APP_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-const BOOTSTRAP_ADMIN = (process.env.ADMIN_ALLOWED_USER || OWNER).toLowerCase();
+const BOOTSTRAP_ADMIN = (process.env.ADMIN_ALLOWED_EMAIL || 'qtx1356@gmail.com').trim().toLowerCase();
 const ARTICLES_PATH = 'assets/articles.json';
 const USERS_PATH = 'assets/admin-users.json';
 const sessions = new Map();
@@ -93,25 +93,26 @@ function sameOrigin(req){const origin=req.headers.origin;return !origin||!PUBLIC
 async function route(req,res) {
   const url=new URL(req.url,'http://'+(req.headers.host||'localhost'));
   if(req.method==='GET'&&url.pathname==='/healthz')return send(res,200,{ok:true});
-  if(req.method==='GET'&&url.pathname==='/auth/github'){
-    if(!CLIENT_ID||!CLIENT_SECRET||!PUBLIC_BASE_URL)return send(res,503,{error:'GitHub OAuth is not configured. Add the GitHub App client ID and secret in Render.'});
+  if(req.method==='GET'&&url.pathname==='/auth/google'){
+    if(!GOOGLE_CLIENT_ID||!GOOGLE_CLIENT_SECRET||!PUBLIC_BASE_URL)return send(res,503,{error:'Google sign-in is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Render.'});
     const state=crypto.randomBytes(24).toString('hex');pendingStates.set(state,Date.now()+600000);
-    const auth=new URL('https://github.com/login/oauth/authorize');auth.searchParams.set('client_id',CLIENT_ID);auth.searchParams.set('redirect_uri',PUBLIC_BASE_URL+'/auth/callback');auth.searchParams.set('state',state);auth.searchParams.set('allow_signup','true');
+    const auth=new URL('https://accounts.google.com/o/oauth2/v2/auth');auth.searchParams.set('client_id',GOOGLE_CLIENT_ID);auth.searchParams.set('redirect_uri',PUBLIC_BASE_URL+'/auth/google/callback');auth.searchParams.set('response_type','code');auth.searchParams.set('scope','openid email profile');auth.searchParams.set('state',state);auth.searchParams.set('prompt','select_account');
     res.writeHead(302,{Location:auth.toString(),'Cache-Control':'no-store','Set-Cookie':cookie('blink_oauth_state',state,600)});return res.end();
   }
-  if(req.method==='GET'&&url.pathname==='/auth/callback'){
+  if(req.method==='GET'&&url.pathname==='/auth/google/callback'){
     const state=url.searchParams.get('state')||'', sc=cookies(req).blink_oauth_state||'', expiry=pendingStates.get(state);pendingStates.delete(state);
     if(!state||state!==sc||!expiry||expiry<Date.now())return send(res,400,{error:'Sign-in verification failed. Please start again.'},{'Set-Cookie':clearCookie('blink_oauth_state')});
     if(url.searchParams.has('error')){res.writeHead(302,{Location:'/?login=cancelled','Set-Cookie':clearCookie('blink_oauth_state')});return res.end();}
     try{
-      const tokenRes=await fetch('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CLIENT_ID,client_secret:CLIENT_SECRET,code:url.searchParams.get('code')||'',redirect_uri:PUBLIC_BASE_URL+'/auth/callback',state})});
-      const tokenData=await tokenRes.json();if(!tokenRes.ok||tokenData.error||!tokenData.access_token)throw new Error(tokenData.error_description||'GitHub sign-in failed.');
-      const identity=await github('/user',tokenData.access_token);
-      const login=(identity.login||'').toLowerCase();if(!login)throw new Error('GitHub did not return a username.');
-      const store=await usersStore();let user=store.value.users.find(u=>u.login.toLowerCase()===login);
+      const tokenRes=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:GOOGLE_CLIENT_ID,client_secret:GOOGLE_CLIENT_SECRET,code:url.searchParams.get('code')||'',grant_type:'authorization_code',redirect_uri:PUBLIC_BASE_URL+'/auth/google/callback'})});
+      const tokenData=await tokenRes.json();if(!tokenRes.ok||!tokenData.access_token)throw new Error(tokenData.error_description||tokenData.error||'Google sign-in failed.');
+      const profileRes=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{headers:{Authorization:'Bearer '+tokenData.access_token}});
+      const identity=await profileRes.json();if(!profileRes.ok)throw new Error(identity.error_description||'Could not verify your Google account.');
+      const login=String(identity.email||'').trim().toLowerCase();if(!login||identity.email_verified!==true)throw new Error('Google must provide a verified email address.');
+      const store=await usersStore();let user=store.value.users.find(u=>String(u.login||'').toLowerCase()===login);
       if(user&&user.status==='disabled')return send(res,403,{error:'This account has been disabled. Contact the Blink administrator.'},{'Set-Cookie':clearCookie('blink_oauth_state')});
       if(!user){
-        const inviteIndex=store.value.invites.findIndex(v=>v.login.toLowerCase()===login);
+        const inviteIndex=store.value.invites.findIndex(v=>String(v.login||'').toLowerCase()===login);
         if(inviteIndex>=0){store.value.invites.splice(inviteIndex,1);user={login,name:identity.name||login,role:'author',status:'active',createdAt:new Date().toISOString()};store.value.users.push(user);await writeRepoJson(USERS_PATH,store.value,store.sha,'Accept Blink author invitation');}
         else {
           user={login,name:identity.name||login,role:'author',status:'pending',createdAt:new Date().toISOString()};
@@ -123,7 +124,7 @@ async function route(req,res) {
       if(user.status!=='active'){res.writeHead(302,{Location:'/?login=pending','Set-Cookie':clearCookie('blink_oauth_state'),'Cache-Control':'no-store'});return res.end();}
       const sessionId=crypto.randomBytes(32).toString('hex');sessions.set(sessionId,{user:safeUser(user),expiresAt:Date.now()+SESSION_TTL});
       res.writeHead(302,{Location:'/?login=success','Cache-Control':'no-store','Set-Cookie':[clearCookie('blink_oauth_state'),cookie('blink_session',sessionId,SESSION_TTL/1000)]});return res.end();
-    }catch(e){console.error(e);return send(res,403,{error:'Sign-in could not be completed: '+e.message},{'Set-Cookie':clearCookie('blink_oauth_state')});}
+    }catch(e){console.error(e);return send(res,403,{error:'Google sign-in could not be completed: '+e.message},{'Set-Cookie':clearCookie('blink_oauth_state')});}
   }
   if(req.method==='GET'&&url.pathname==='/api/session'){
     const s=sessionFor(req);return send(res,200,s?{authenticated:true,user:s.user}:{authenticated:false});
@@ -139,7 +140,7 @@ async function route(req,res) {
   if(req.method==='POST'&&url.pathname==='/api/users/invite'){
     if(!isAdmin(session))return send(res,403,{error:'Only admins can invite authors.'});
     const body=await readBody(req),login=String(body.login||'').trim().replace(/^@/,'').toLowerCase();
-    if(!/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/.test(login))return send(res,400,{error:'Enter a valid GitHub username.'});
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(login))return send(res,400,{error:'Enter a valid Google email address.'});
     const store=await usersStore();
     if(store.value.users.some(u=>u.login.toLowerCase()===login&&u.status!=='disabled'))return send(res,409,{error:'This user already has an account.'});
     if(!store.value.invites.some(v=>v.login.toLowerCase()===login))store.value.invites.push({login,invitedBy:session.user.login,createdAt:new Date().toISOString()});
@@ -177,4 +178,4 @@ async function route(req,res) {
   }
   return send(res,404,{error:'Not found.'});
 }
-http.createServer((req,res)=>{route(req,res).catch(e=>{console.error(e);if(!res.headersSent)send(res,e.status||500,{error:e.message||'Unexpected server error.'});else res.end();});}).listen(PORT,()=>console.log('Blink multi-user admin listening on '+PORT));
+http.createServer((req,res)=>{route(req,res).catch(e=>{console.error(e);if(!res.headersSent)send(res,e.status||500,{error:e.message||'Unexpected server error.'});else res.end();});}).listen(PORT,()=>console.log('Blink Google-login multi-user admin listening on '+PORT));
