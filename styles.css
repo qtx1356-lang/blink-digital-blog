@@ -14,3 +14,51 @@ body.modal-open{overflow:hidden}
 .article-modal-panel .article-intro{font-size:17px;line-height:1.75;color:#34465f;border-left:3px solid var(--blue);padding-left:17px;margin:22px 0 28px}
 .article-modal-panel .read-link{display:inline-block;border:0;background:transparent;cursor:pointer;padding:18px 0 0}
 @media(max-width:650px){.article-modal{padding:10px;align-items:flex-end}.article-modal-panel{max-height:92vh;border-radius:12px 12px 4px 4px;padding:25px 22px}.article-modal-panel p{font-size:13px}}
+
+
+/* Polished article action buttons */
+button.read-link{
+  appearance:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin:0;
+  padding:10px 15px;
+  border:1px solid #c9edf4;
+  border-radius:6px;
+  background:#eafaff;
+  color:#087f9b;
+  font:800 10px/1.2 var(--font);
+  letter-spacing:.01em;
+  cursor:pointer;
+  transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+button.read-link span{font-size:15px;margin:0;line-height:1}
+button.read-link:hover{
+  background:#d8f6fc;
+  border-color:#8bdce9;
+  color:#055d76;
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px #087f9b18;
+}
+.featured-copy button.read-link{
+  background:#123b59;
+  border-color:#28627c;
+  color:#7ce7f5;
+}
+.featured-copy button.read-link:hover{
+  background:#174d6d;
+  border-color:#55cfe2;
+  color:#b5f7ff;
+}
+.article-modal-panel button.read-link{
+  background:#f1f7fb;
+  border-color:#dce7ef;
+  color:#314c68;
+}
+.article-modal-panel button.read-link:hover{
+  background:#e5f5fa;
+  border-color:#b8e5ee;
+  color:#087f9b;
+}
