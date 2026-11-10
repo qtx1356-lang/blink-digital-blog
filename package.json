@@ -1,0 +1,12 @@
+{
+  "name": "blink-digital-blog-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private GitHub-powered article dashboard for Blink Digital Solution",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
